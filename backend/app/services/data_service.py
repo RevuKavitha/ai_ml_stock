@@ -74,15 +74,13 @@ def fetch_stock_history(ticker: str, range_value: str) -> pd.DataFrame:
         # Fallback 3: Stooq (no API key) for cases where Yahoo endpoints are blocked.
         if df.empty:
             df = _fetch_from_stooq()
-    except Exception as exc:  # pragma: no cover - defensive branch
-        # If Yahoo failed unexpectedly, try Stooq before surfacing provider error.
+    except Exception:  # pragma: no cover - defensive branch
+        # If Yahoo/Stooq fail (provider format/network issues), keep service available
+        # by falling back to deterministic demo data.
         try:
             df = _fetch_from_stooq()
-        except Exception as stooq_exc:
-            raise HTTPException(
-                status_code=502,
-                detail=f"Failed to fetch stock data from Yahoo and Stooq: {stooq_exc}",
-            ) from exc
+        except Exception:
+            df = _generate_demo_data(ticker=ticker, range_value=range_value)
 
     if df.empty:
         # Final fallback: deterministic demo data so the app can still be tested
